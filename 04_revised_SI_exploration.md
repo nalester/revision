@@ -315,12 +315,23 @@ you do include in your model**: “mean silence per turn” is inaccurate;
 I also plot relationships between filled pauses and word counts, as well
 as filled pauses and silence. All show generally positive correlations,
 but again, a great deal of individual variation. This provides some
-support for the two being treated as measures of the same thing (to some
-extent at least, namely, the presence of cognitive load). But
-conceptually, filled and silent pauses are opposed, but only in one
+support for the two dependent variables being treated as measures of the
+same thing, namely, the presence of cognitive load. But conceptually,
+filled and silent pauses are opposed, though perhaps only in one
 direction: filled pauses “eat” silence (i.e., replace what could have
 been silence with noise) but not vice-versa (what would it mean to say
-that silence replaced what could have been a filled pause?).
+that silence replaced what could have been a filled pause?). I am not
+exactly sure what to make of this point, but it suggests something like
+“silence as planning time might be underestimated when too many filled
+pauses appear, but not vice-versa.” I guess you could use the number of
+filled pauses as a control in the silence model.
+
+Another question: are all uh/um’s made the same? I recall Fox Tree and
+Clark (2001-ish?) distinguished between long and short uh/um. If you
+could measure the durations of your uh/um’s, you could have an analogue
+to your silence measure: “amount of time spent filling pauses” (or
+something more elegant). Alternatively, you could just count “long”
+vs. “short” uh/um.
 
 A final note: each speaker appears in only one file (though some files
 contain multiple speakers). This has ramifications for the random effect
@@ -1492,4 +1503,5 @@ and complete dataset (I can’t know *why* what I get doesn’t look like
 what you got). However, the results hold up.
 
 I leave it here (if the authors are interested, I recommend examining
-the other variants of the analysis applied to the filled pauses).
+the other variants of the analysis applied to the filled pauses with the
+silence data).
