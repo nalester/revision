@@ -41,7 +41,7 @@ str(si)
 si[1,]
 ```
 **Descriptive stats**  
-As reported in revised MS (pp. 14-15):
+As reported in revised MS (pp. 14-15):  
 - 190 transcripts (corresponding to `si$Audiofile`?)  
 - 7171 total turns (`si$Turn`)  
 - 6278 total variable contexts (must be derived by summing sums of columns 3-22)  

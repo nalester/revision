@@ -83,8 +83,8 @@ si[1,]
     ## 1     25     2   2.744         8.1335    85     3.4 3.073708       0.10976
 
 **Descriptive stats**  
-As reported in revised MS (pp. 14-15): - 190 transcripts (corresponding
-to `si$Audiofile`?)  
+As reported in revised MS (pp. 14-15):  
+\- 190 transcripts (corresponding to `si$Audiofile`?)  
 \- 7171 total turns (`si$Turn`)  
 \- 6278 total variable contexts (must be derived by summing sums of
 columns 3-22)  
