@@ -193,7 +193,7 @@ si$NVarbBinary = as.factor(ifelse(si$NVarb==0, "absent", "present"))
 ```
 
 **Adding some additional columns**  
-One possible additional variable is the spread of the types of variable contexts within turns. A simple metric is the type-token ratio (number of types of variable contexts over the number of variable contexts overall in the turn). Another potential variable of interest is the number of speakers. Since the data are all monologic or dialogic, this variable can be encoded as a factor.
+One possible additional variable is the spread of the types of variable contexts within turns. A simple metric is the type-token ratio (number of types of variable contexts over the number of variable contexts overall in the turn). 
 ```{r TTR}
 # Number of variable context types
 si$NVarbTypes = apply(si[, 3:22], 1, function(x) sum(x>0))
@@ -223,13 +223,6 @@ ggplot(si, aes(x = VarbTTR)) +
        ggtitle("Distribution of variable types per token") +
        theme_bw() +
        theme(plot.title = element_text(hjust = 0.5))
-
-# Number of speakers
-si = si %>%
-     group_by(Audiofile) %>% 
-     summarize(n.spkr = length(unique(Speaker_Number))) %>%
-     mutate(logicity = if_else(n.spkr == 1, "monologue", "dialogue")) %>%
-     right_join(., si, by="Audiofile")
 ```
 
 The vast majority of instances are either equal to 0 (i.e., no variable contexts) or 1 (one type per token). The remainder of the observed values occupy the middle-high range of diversity (i.e., adding variable contexts tends to involve introducing different such contexts).
@@ -237,7 +230,7 @@ The vast majority of instances are either equal to 0 (i.e., no variable contexts
 Finally, we can scale the variables.
 ```{r scaling}
 # Scale using z-scores
-scaled = as.data.frame(scale(si[, c(27:34, 37:38)]))
+scaled = as.data.frame(scale(si[, c(25:32, 35:36)]))
 ## Fix column names
 colnames(scaled) = paste0(colnames(scaled), ".scaled")
 
@@ -275,7 +268,7 @@ summary(fp.mod.rep.scaled)
 ##################################
 # Replication with added variables
 ##################################
-fp.mod.exp = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3) + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.exp = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3)) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 # Summary + p-values from lmerTest
 summary(fp.mod.exp)
@@ -283,7 +276,7 @@ summary(fp.mod.exp)
 ###########################################
 # Replication with added variables (scaled)
 ###########################################
-fp.mod.exp.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3) + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.exp.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3)) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 # Summary + p-values from lmerTest
 summary(fp.mod.exp.scaled)
@@ -301,14 +294,14 @@ no.0.dat = si %>% filter(!Audiofile %in% bad.files)
 ####################################
 # Replication (extended, no 0 files)
 ####################################
-fp.mod.no.0 = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3) + logicity) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.no.0 = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3)) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.no.0)
 
 ############################################
 # Replication (extended, no 0 files, scaled)
 ############################################
-fp.mod.no.0.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3) + logicity) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.no.0.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3)) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.no.0.scaled)
 
@@ -316,32 +309,32 @@ summary(fp.mod.no.0.scaled)
 # Looking at other operationalizations of variable contexts
 ###########################################################
 ## Raw number of variable contexts
-fp.mod.raw = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.raw = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
   
 summary(fp.mod.raw)
 
 ## Now raw number of variable contexts, but only >0 (i.e., what happens assuming that we have at least one variable context)
-fp.mod.raw.no.0 = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.raw.no.0 = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.raw.no.0)
 
 ## Number of types of variable contexts
-fp.mod.types = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.types = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.types)
 
 ## Number of types of variable contexts, but only greater than 0
-fp.mod.types.no.0 = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.types.no.0 = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.types.no.0)
 
 ## TTR of contexts
-fp.mod.ttr = glmer(FilledPauseBinary ~ VarbTTR*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.ttr = glmer(FilledPauseBinary ~ VarbTTR*(Total.Duration + AvgChar + SRate) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.ttr)
 
 ## TTR of contexts, scaled
-fp.mod.ttr.no.0 = glmer(FilledPauseBinary ~ VarbTTR.scaled*(Total.Duration.scaled + AvgChar.scaled  + SRate.scaled  + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+fp.mod.ttr.no.0 = glmer(FilledPauseBinary ~ VarbTTR.scaled*(Total.Duration.scaled + AvgChar.scaled  + SRate.scaled) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
 
 summary(fp.mod.ttr.no.0)
 ```
