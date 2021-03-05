@@ -82,13 +82,17 @@ si[1,]
     ##   NWords NVarb Silence Total.Duration NChar AvgChar    SRate SilencebyWord
     ## 1     25     2   2.744         8.1335    85     3.4 3.073708       0.10976
 
-**Descriptive stats** As reported in revised MS (pp. 14-15): - 190
-transcripts (corresponding to `si$Audiofile`?) - 7171 total turns
-(`si$Turn`) - 6278 total variable contexts (must be derived by summing
-sums of columns 3-22) - 3473 turns with at least one variable context
-(for which row sum of columns 3-22 \!= 0) - 2164 turns contain at least
-one filled pause - 5 maximum number of filled paused per turn - 111 mean
-silence per turn
+**Descriptive stats**  
+As reported in revised MS (pp. 14-15): - 190 transcripts (corresponding
+to `si$Audiofile`?)  
+\- 7171 total turns (`si$Turn`)  
+\- 6278 total variable contexts (must be derived by summing sums of
+columns 3-22)  
+\- 3473 turns with at least one variable context (for which row sum of
+columns 3-22 \!= 0)  
+\- 2164 turns contain at least one filled pause  
+\- 5 maximum number of filled paused per turn  
+\- 111 mean silence per turn
 
 ``` r
 # Number of transcripts
@@ -347,13 +351,13 @@ si$FilledPauseBinary = as.factor(ifelse(si$FilledPause==0, "absent", "present"))
 si$NVarbBinary = as.factor(ifelse(si$NVarb==0, "absent", "present"))
 ```
 
-**Adding some additional columns** It struck me that there is an
-additional dimension of the data that has yet to be explored. One is the
-spread of the types of variable contexts within turns. A simple metric
-is the type-token ratio (number of types of variable contexts over the
-number of variable contexts overall in the turn). Another potential
-variable of interest is the number of speakers. Since the data are all
-monologic or dialogic, this variable can be encoded as a factor.
+**Adding some additional columns**  
+One possible additional variable is the spread of the types of variable
+contexts within turns. A simple metric is the type-token ratio (number
+of types of variable contexts over the number of variable contexts
+overall in the turn). Another potential variable of interest is the
+number of speakers. Since the data are all monologic or dialogic, this
+variable can be encoded as a factor.
 
 ``` r
 # Number of variable context types
