@@ -1,0 +1,403 @@
+---
+title: "review_2"
+author: "Nicholas Lester"
+output: 
+  github_document:
+  pandoc_args: --webtex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=T, error=F, message=F, warning=F, cache=T)
+```
+
+**Clear memory**
+```{r clear_mem}
+rm(list=ls(all=T))
+```
+
+**Load libraries**
+```{r load_libs}
+library(lmerTest)
+library(dplyr)
+library(ggplot2)
+library(languageR)
+library(visreg)
+library(mgcv)
+library(car)
+library(effects)
+```
+
+**Load the supplementary data** (`si`)
+```{r load_data}
+si = read.table(file="./03_data.txt", header=T, sep="\t", quote="", comment.char="")
+```
+
+**Basic properties of the data**
+```{r basic_props}
+# Overview of the dataframe
+str(si)
+
+# Preview a row
+si[1,]
+```
+**Descriptive stats**
+As reported in revised MS (pp. 14-15):
+- 190 transcripts (corresponding to `si$Audiofile`?)
+- 7171 total turns (`si$Turn`)
+- 6278 total variable contexts (must be derived by summing sums of columns 3-22)
+- 3473 turns with at least one variable context (for which row sum of columns 3-22 != 0)
+- 2164 turns contain at least one filled pause
+- 5 maximum number of filled paused per turn
+- 111 mean silence per turn
+
+```{r descriptive_stats}
+# Number of transcripts
+cat(paste0("Number of transcripts: ", length(unique(si$Audiofile)), "\n"))
+
+# Number of total turns
+cat(paste0("Number of turns: ", nrow(si), "\n"))
+
+# Number fo variable contexts
+cat(paste0("Number of variable contexts: ", sum(colSums(si[, 3:22])), "\n"))
+
+# Turns with/out variable contexts
+cat(paste0("Number of turns w/o variable contexts: ", sum(rowSums(si[, 3:22])==0), "\n"))
+
+cat(paste0("Number of turns w/ variable contexts: ", sum(rowSums(si[, 3:22])!=0), "\n"))
+
+# Are there any audiofiles that lack variable contexts entirely?
+files.wo = unique(si$Audiofile[rowSums(si[, 3:22])==0])
+files.w = unique(si$Audiofile[rowSums(si[, 3:22])!=0])
+
+# Files in which 0 turns contain at least one variable context
+cat(paste0("Files w/o any variable contexts: ", paste(setdiff(files.wo, files.w), collapse=", "), "\n"))
+
+# Files in which every turn contains at least one variable context
+cat(paste0("Files in which every turn has > 0 variable contexts: ", paste(setdiff(files.w, files.wo), collapse=", "), "\n"))
+
+# Filled pauses
+## Total number
+cat(paste0("Number of filled pauses: ", sum(si$FilledPause), "\n"))
+
+## Turns with filled pauses
+cat(paste0("Number of turns w/ filled pauses: ", sum(si$FilledPause!=0),"\n"))
+
+## Max number of filled pauses
+cat(paste0("Maximum number of filled pauses: ", max(si$FilledPause), "\n"))
+
+## Files with/out filled pauses
+files.w.fp = unique(si$Audiofile[si$FilledPause==0])
+files.wo.fp = unique(si$Audiofile[si$FilledPause!=0])
+
+#### Files with filled pauses
+cat(paste0("Files w/o any filled pauses: ", paste(setdiff(files.wo.fp, files.w.fp), collapse=", "), "\n"))
+
+###### How many turns?
+cat(paste0("-- but it has only ", sum(si$Audiofile==3248), " turn(s)\n"))
+
+#### Files without filled pauses
+cat(paste0("Files in which every turn has a filled pause: ", paste(setdiff(files.w.fp, files.wo.fp), collapse=", "), "\n"))
+
+## A new question: how many turns per file?
+turn.cts = si %>%
+           group_by(Audiofile) %>%
+           summarize(n.turns = n())
+
+#### Density of turns per file
+ggplot(turn.cts, aes(x = n.turns)) +
+       geom_histogram(aes(y = ..density..), color="darkblue", fill="white") +
+       geom_density(alpha=.2, fill="darkred") +
+       xlab("Number of turns") +
+       ggtitle("Distribution of transcript lengths (turns)") +
+       theme_bw() +
+       theme(plot.title = element_text(hjust = 0.5))
+
+## Mean silence per turn (defined as silence/number of words)
+cat(paste0("Mean duration of silence per turn: ", mean(si$SilencebyWord)*1000, "\n"))
+
+## Plotting the relationship between silence and length in words
+ggplot(si, aes(x = NWords, 
+               y = Silence, 
+               color = as.factor(si$Speaker_Number),
+               fill = as.factor(si$Speaker_Number))) + 
+      geom_point(alpha=0.5) + 
+      geom_smooth(method = "gam", formula = y~s(x)) + 
+      theme_bw() + 
+      ggtitle("Silence vs. turn length in words") +
+      xlab("Number of words") + 
+      ylab("Silence (s)") +
+      labs(fill="Speaker ID", color="Speaker ID")
+
+## What about the relationship between filled pauses and word counts?
+ggplot(si, aes(x = as.factor(si$FilledPause), 
+               y = NWords, 
+               color = as.factor(si$Speaker_Number),
+               fill = as.factor(si$Speaker_Number))) + 
+      geom_boxplot(alpha=0.5, notch=T) +
+      theme_bw() + 
+      ggtitle("Filled pauses vs. turn length in words") +
+      xlab("Number of filled pauses") + 
+      ylab("Number of words") +
+      labs(fill="Speaker ID", color="Speaker ID")
+
+## ... and between filled pauses and silence?
+ggplot(si, aes(x = as.factor(si$FilledPause), 
+               y = Silence, 
+               color = as.factor(si$Speaker_Number),
+               fill = as.factor(si$Speaker_Number))) + 
+      geom_boxplot(alpha=0.5, notch=T) +
+      theme_bw() + 
+      ggtitle("Filled pauses vs. silence") +
+      xlab("Number of filled pauses") + 
+      ylab("Silence (s)") +
+      labs(fill="Speaker ID", color="Speaker ID")
+
+## Do any speakers appear in more than one file?
+any(table(unique(si[, c("Audiofile", "Speaker_Number")]))>1)
+
+any(table(unique(si[, c("Audiofile", "Speaker_Number")])$Audiofile)>1)
+
+```
+
+As with the prior SI (submitted with the original MS), there is a mismatch between the number of transcripts reported and those that appear in the dataset. Here, the number is off by 108 (a sizeable discrepancy). 
+
+There also appears to be a typo on p. 14 regarding the number of turns with 0 variable contexts (should be 3698, but just repeats the 3473, i.e., the number of turns with at least one variable context).
+
+Strangely, there are two files in which no variable contexts were observed. Is this true? 
+
+Another oddity: one file contains zero filled pauses. But this can be partially explained by the fact that it contains only a single turn. A look at the distribution of turns per file shows that several other files likewise contain very few turns. 
+
+Regarding mean duration of silence per turn, why don't you simply use the total silence? Doesn't this assume a linear relationship between words and additional silence (i.e., that each word can be seen as adding a relatively similar amount of silence)? A look at the scatter plot (with GAM smooths per speaker) suggests that the trend generally positive for shorter turns, but levels off for longer turns (in most cases). The plot also shows a great degree of individual variation in the relationship, especially for longer turns. I don't think using one or the other will affect the findings, but that is an empirical question. 
+
+**At the very least, I suggest a change in the how you refer to the term you do include in your model**: "mean silence per turn" is inaccurate; "mean silence per word" is what you actually measure. 
+
+I also plot relationships between filled pauses and word counts, as well as filled pauses and silence. All show generally positive correlations, but again, a great deal of individual variation. This provides some support for the two being treated as measures of the same thing (to some extent at least, namely, the presence of cognitive load). But conceptually, filled and silent pauses are opposed, but only in one direction: filled pauses "eat" silence (i.e., replace what could have been silence with noise) but not vice-versa (what would it mean to say that silence replaced what could have been a filled pause?).
+
+A final note: each speaker appears in only one file (though some files contain multiple speakers). This has ramifications for the random effect structure (nesting speakers in file).
+
+A good amount the above discussion suggests that we should investigate the collinearity of the variables in question. We know that certain of them of correlated, but is this correlation potentially harmful?
+
+**Collinearity**
+```{r collinearity}
+collin.fnc(si %>% 
+           select(NVarb, AvgChar, SRate, Total.Duration))$cnumber
+```
+
+This value falls below at least one threshold (k = 30; Baayen, 2008), indicating that the degree of multicollinearity is probably tolerable.
+
+**Adding the missing columns**
+The dataset as submitted does not contain columns for the binarized transformations of the FilledPause and NVarb columns. Therefore, we must construct those ourselves.
+```{r adding_columns}
+si$FilledPauseBinary = as.factor(ifelse(si$FilledPause==0, "absent", "present"))
+si$NVarbBinary = as.factor(ifelse(si$NVarb==0, "absent", "present"))
+```
+
+**Adding some additional columns**
+It struck me that there is an additional dimension of the data that has yet to be explored. One is the spread of the types of variable contexts within turns. A simple metric is the type-token ratio (number of types of variable contexts over the number of variable contexts overall in the turn). Another potential variable of interest is the number of speakers. Since the data are all monologic or dialogic, this variable can be encoded as a factor.
+```{r TTR}
+# Number of variable context types
+si$NVarbTypes = apply(si[, 3:22], 1, function(x) sum(x>0))
+
+# Distribution of variable context types
+ggplot(si, aes(x = NVarbTypes)) +
+       geom_histogram(aes(y = ..density..), 
+                      color="darkblue", 
+                      fill="white") +
+       geom_density(alpha=.2, fill="darkred") +
+       xlab("Number of variable types") +
+       ggtitle("Distribution of variable type counts") +
+       theme_bw() +
+       theme(plot.title = element_text(hjust = 0.5))
+
+# TTR
+si$VarbTTR = si$NVarbTypes/si$NVarb
+si$VarbTTR = ifelse(is.na(si$VarbTTR), 0, si$VarbTTR)
+
+# Distribution of TTR
+ggplot(si, aes(x = VarbTTR)) +
+       geom_histogram(aes(y = ..density..), 
+                      color="darkblue", 
+                      fill="white") +
+       geom_density(alpha=.2, fill="darkred") +
+       xlab("TTR") +
+       ggtitle("Distribution of variable types per token") +
+       theme_bw() +
+       theme(plot.title = element_text(hjust = 0.5))
+
+# Number of speakers
+si = si %>%
+     group_by(Audiofile) %>% 
+     summarize(n.spkr = length(unique(Speaker_Number))) %>%
+     mutate(logicity = if_else(n.spkr == 1, "monologue", "dialogue")) %>%
+     right_join(., si, by="Audiofile")
+```
+
+The vast majority of instances are either equal to 0 (i.e., no variable contexts) or 1 (one type per token). The remainder of the observed values occupy the middle-high range of diversity (i.e., adding variable contexts tends to involve introducing different such contexts).
+
+Finally, we can scale the variables.
+```{r scaling}
+# Scale using z-scores
+scaled = as.data.frame(scale(si[, c(27:34, 37:38)]))
+## Fix column names
+colnames(scaled) = paste0(colnames(scaled), ".scaled")
+
+# Add the scaled columns
+si = bind_cols(si, scaled) %>% as.data.frame()
+```
+
+**Filled pause model**
+```{r filled_pause_model}
+###############################
+# Replication of reported model
+###############################
+fp.mod.rep = glmer(FilledPauseBinary ~ NVarbBinary*Total.Duration + AvgChar + SRate + (1|Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+# Summary + p-values from lmerTest
+summary(fp.mod.rep)
+
+# p-values as derived in the MS
+Anova(fp.mod.rep, type = 2)
+
+###########################################################
+# Replication but with more complex random-effect structure
+###########################################################
+fp.mod.rep.rand = glmer(FilledPauseBinary ~ NVarbBinary*Total.Duration + AvgChar + SRate + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.rep.rand)
+
+#######################################
+# Replication but with scaled variables
+#######################################
+fp.mod.rep.scaled = glmer(FilledPauseBinary ~ NVarbBinary*Total.Duration.scaled + AvgChar.scaled + SRate.scaled + (1|Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.rep.scaled)
+
+##################################
+# Replication with added variables
+##################################
+fp.mod.exp = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3) + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+# Summary + p-values from lmerTest
+summary(fp.mod.exp)
+
+###########################################
+# Replication with added variables (scaled)
+###########################################
+fp.mod.exp.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3) + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+# Summary + p-values from lmerTest
+summary(fp.mod.exp.scaled)
+
+##################################################
+# Removing those files that do not have any filled 
+# pauses or variable contexts
+# - based on the descriptive stats above
+##################################################
+bad.files = c(2597, 4157, 3248)
+
+## Create restricted dataset
+no.0.dat = si %>% filter(!Audiofile %in% bad.files)
+
+####################################
+# Replication (extended, no 0 files)
+####################################
+fp.mod.no.0 = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration,3) + poly(AvgChar,3) + poly(SRate,3) + logicity) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.no.0)
+
+############################################
+# Replication (extended, no 0 files, scaled)
+############################################
+fp.mod.no.0.scaled = glmer(FilledPauseBinary ~ NVarbBinary*(poly(Total.Duration.scaled,3) + poly(AvgChar.scaled,3) + poly(SRate.scaled,3) + logicity) + (1|Audiofile/Speaker_Number), data = no.0.dat, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.no.0.scaled)
+
+###########################################################
+# Looking at other operationalizations of variable contexts
+###########################################################
+## Raw number of variable contexts
+fp.mod.raw = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+  
+summary(fp.mod.raw)
+
+## Now raw number of variable contexts, but only >0 (i.e., what happens assuming that we have at least one variable context)
+fp.mod.raw.no.0 = glmer(FilledPauseBinary ~ NVarb*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.raw.no.0)
+
+## Number of types of variable contexts
+fp.mod.types = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.types)
+
+## Number of types of variable contexts, but only greater than 0
+fp.mod.types.no.0 = glmer(FilledPauseBinary ~ NVarbTypes*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si %>% filter(NVarb>0), family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.types.no.0)
+
+## TTR of contexts
+fp.mod.ttr = glmer(FilledPauseBinary ~ VarbTTR*(Total.Duration + AvgChar + SRate + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.ttr)
+
+## TTR of contexts, scaled
+fp.mod.ttr.no.0 = glmer(FilledPauseBinary ~ VarbTTR.scaled*(Total.Duration.scaled + AvgChar.scaled  + SRate.scaled  + logicity) + (1|Audiofile/Speaker_Number), data = si, family="binomial", glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)))
+
+summary(fp.mod.ttr.no.0)
+```
+
+The replication checks out. 
+
+No matter what I throw at the dataset, we see that variable contexts interact with at least one of the control variables. The most persistent such interactions are between variable contexts on the one hand, and duration and speech rate, respectively, on the other. When polynomial terms are allowed, we also generally remove the main effect of variable contexts altogether.
+
+Duration and speech rate are positively correlated in this dataset. People who talk faster talk longer. (actually the effect is more complex -- those who talk the very fastest say less, making an inverted "u", but that is not pertinent to the present question).
+```{r duration.vs.rate}
+library(MASS)
+boxcox(lm(Total.Duration ~ 1, data=si)) # suggests log transform
+
+dur.mod = lmer(log(Total.Duration) ~ SRate + (1|Audiofile/Speaker_Number), data = si)
+
+qqnorm(resid(dur.mod))
+
+plot(allEffects(dur.mod))
+```
+
+However, the two variables have opposite effects on the presence of filled pauses. So, as speech rate increases, filled pauses are less likely. However, the presence of variable contexts leads to pauses being even **less** likely. For duration, which generally increases the likelihood of filled pauses, the simultaneous presence of variable contexts **still** decreases the likelihood of a filled pause. 
+
+Even when the associated effects on which the target variable is "parasitic" are in different directions, the effect of the target variable is the same. To me, this fact should be highlighted, as it could significantly strengthen your claim. 
+
+Something that needs to be considered is what these variables mean. Are they mainly indicative of personal speech style (e.g., speakers can be classified into faster or slower, longer talkers or slower), speech context (immediate, as in the idiosyncratic properties of an individual turn, or more global, such as the broader discursive context), or something else? And why would increased presence of variation help in particular circumstances (i.e., for the fastest/longest speakers)?
+
+**Silence model**
+```{r silence_model}
+###############################
+# Replication of reported model
+###############################
+# Check whether a power transform is necessary (using the Box-Cox method)
+boxcox(lm(SilencebyWord ~ 1, data = si)) # squareroot is maybe a better match than log, but both are probably OK
+
+# Replication
+sil.mod = lmer(log(SilencebyWord) ~ NVarbBinary*Total.Duration.scaled + AvgChar.scaled + SRate.scaled + (1|Speaker_Number), data = si)
+
+summary(sil.mod)
+
+qqnorm(resid(sil.mod))
+
+# Squareroot transform
+sil.mod.sqrt = lmer(SilencebyWord^0.5 ~ NVarbBinary*Total.Duration.scaled + AvgChar.scaled + SRate.scaled + (1|Speaker_Number), data = si)
+
+summary(sil.mod.sqrt)
+
+qqnorm(resid(sil.mod.sqrt)) # better approx. of normality for model residuals
+
+# Without scaling
+sil.mod.no.scale = lmer(log(SilencebyWord) ~ NVarbBinary*Total.Duration + AvgChar + SRate + (1|Speaker_Number), data = si)
+
+summary(sil.mod.no.scale)
+
+qqnorm(resid(sil.mod.no.scale))
+```
+
+I have tried to replicate your results for the silence model, but no matter how I apply the transforms, I can't seem to arrive at the same coefficients. A prime example of why one should provide their own code and complete dataset (I can't know *why* what I get doesn't look like what you got). However, the results hold up. 
+
+I leave it here (if the authors are interested, I recommend examining the other variants of the analysis applied to the filled pauses).
